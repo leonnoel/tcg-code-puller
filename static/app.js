@@ -257,7 +257,8 @@ function renderVideos(videos) {
                 </div>
             </div>
             <div class="flex items-center gap-2 ml-3">
-                ${v.status === 'failed' ? `<button onclick="reprocessVideo(${v.id})" class="btn-sm bg-pokemon-blue hover:bg-blue-700">🔄 Retry</button>` : ''}
+                ${v.status === 'pending' ? `<button onclick="skipVideo(${v.id})" class="btn-sm bg-gray-600 hover:bg-gray-500">⏭️ Skip</button>` : ''}
+                ${v.status === 'failed' || v.status === 'skipped' ? `<button onclick="reprocessVideo(${v.id})" class="btn-sm bg-pokemon-blue hover:bg-blue-700">🔄 ${v.status === 'skipped' ? 'Process' : 'Retry'}</button>` : ''}
                 ${v.status === 'processing' || v.status === 'downloading' ? '<div class="spinner"></div>' : ''}
             </div>
         </div>
@@ -271,6 +272,16 @@ async function reprocessVideo(id) {
         loadVideos();
     } catch (err) {
         showToast('❌ Reprocess failed', 'error');
+    }
+}
+
+async function skipVideo(id) {
+    try {
+        await fetch(`${API}/videos/${id}/skip`, { method: 'POST' });
+        showToast('⏭️ Video skipped', 'info');
+        loadVideos();
+    } catch (err) {
+        showToast('❌ Skip failed', 'error');
     }
 }
 

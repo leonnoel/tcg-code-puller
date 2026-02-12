@@ -70,6 +70,38 @@ async def reprocess_video(video_id: int):
     return {"status": "ok", "message": "Video queued for reprocessing"}
 
 
+@router.post("/{video_id}/skip")
+async def skip_video(video_id: int):
+    """Skip processing for a video."""
+    db = await get_db()
+
+    cursor = await db.execute("SELECT * FROM videos WHERE id = ?", (video_id,))
+    row = await cursor.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Video not found")
+
+    await db.execute(
+        "UPDATE videos SET status = 'skipped' WHERE id = ?",
+        (video_id,),
+    )
+    await db.commit()
+
+    return {"status": "ok", "message": "Video skipped"}
+
+
+@router.post("/bulk/skip")
+async def bulk_skip_videos(video_ids: list[int]):
+    """Skip multiple videos at once."""
+    db = await get_db()
+    for vid in video_ids:
+        await db.execute(
+            "UPDATE videos SET status = 'skipped' WHERE id = ? AND status = 'pending'",
+            (vid,),
+        )
+    await db.commit()
+    return {"status": "ok", "skipped": len(video_ids)}
+
+
 @router.get("/{video_id}", response_model=VideoResponse)
 async def get_video(video_id: int):
     """Get details for a specific video."""
