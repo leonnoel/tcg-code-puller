@@ -3,7 +3,7 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
@@ -70,7 +70,19 @@ async def health_check():
         "status": "ok",
         "monitoring_mode": "api" if settings.use_youtube_api else "rss",
         "poll_interval": settings.poll_interval,
+        "cookies_configured": bool(settings.YTDLP_COOKIES_FILE or settings.YTDLP_COOKIES_FROM_BROWSER),
     }
+
+
+@app.post("/api/settings/cookies")
+async def upload_cookies(file: UploadFile):
+    """Upload a cookies.txt file for YouTube authentication."""
+    cookies_path = settings.DATA_DIR / "cookies.txt"
+    content = await file.read()
+    cookies_path.write_bytes(content)
+    settings.YTDLP_COOKIES_FILE = str(cookies_path)
+    logger.info(f"Cookies file uploaded: {cookies_path}")
+    return {"status": "ok", "message": "Cookies uploaded successfully"}
 
 
 @app.get("/api/stats")

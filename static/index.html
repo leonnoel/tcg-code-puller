@@ -98,6 +98,31 @@
                 </div>
             </div>
 
+            <!-- Settings -->
+            <div class="bg-pokemon-card rounded-lg border border-gray-700 mb-6" id="settings-section">
+                <div class="p-4 border-b border-gray-700">
+                    <h2 class="text-lg font-semibold">⚙️ Settings</h2>
+                </div>
+                <div class="p-4">
+                    <div class="flex items-center justify-between flex-wrap gap-4">
+                        <div>
+                            <p class="text-sm text-gray-300">YouTube Cookies</p>
+                            <p class="text-xs text-gray-500" id="cookie-status">Checking...</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <input type="file" id="cookie-file" accept=".txt" class="hidden" onchange="uploadCookies()">
+                            <button onclick="document.getElementById('cookie-file').click()" class="btn-sm bg-pokemon-blue hover:bg-blue-700">
+                                📤 Upload cookies.txt
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">
+                        If video downloads fail with "Sign in to confirm you're not a bot", export your YouTube cookies using a browser extension
+                        like <a href="https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc" target="_blank" class="text-blue-400 hover:underline">Get cookies.txt</a> and upload them here.
+                    </p>
+                </div>
+            </div>
+
             <!-- Activity Feed -->
             <div class="bg-pokemon-card rounded-lg border border-gray-700">
                 <div class="p-4 border-b border-gray-700">

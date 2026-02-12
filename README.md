@@ -56,6 +56,8 @@ All settings via environment variables:
 | `VIDEO_MAX_RESOLUTION` | `720` | Max video download resolution |
 | `FRAME_INTERVAL` | `0.5` | Seconds between frame extractions |
 | `PORT` | `8000` | Server port |
+| `YTDLP_COOKIES_FILE` | (none) | Path to Netscape cookies.txt for YouTube auth |
+| `YTDLP_COOKIES_FROM_BROWSER` | (none) | Browser to extract cookies from (e.g., `chrome`) |
 
 ## How It Works
 
@@ -65,6 +67,22 @@ All settings via environment variables:
 4. **Scan** — Runs QR detection (pyzbar) then OCR (tesseract) on each frame
 5. **Validate** — Matches against Pokémon TCG code format (13 alphanumeric chars)
 6. **Notify** — Pushes codes to your browser via WebSocket in real-time
+
+## YouTube Cookie Authentication
+
+YouTube may block video downloads from headless/cloud environments. If you see "Sign in to confirm you're not a bot" errors, you need to provide cookies:
+
+**Option 1: Export cookies from your browser** (recommended)
+```bash
+# Use a browser extension like "Get cookies.txt" to export YouTube cookies
+export YTDLP_COOKIES_FILE="/path/to/cookies.txt"
+```
+
+**Option 2: Auto-extract from local browser**
+```bash
+# Works when running on the same machine as your browser
+export YTDLP_COOKIES_FROM_BROWSER="chrome"  # or firefox, edge, etc.
+```
 
 ## Tech Stack
 

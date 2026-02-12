@@ -98,6 +98,18 @@ async function loadDashboard() {
         document.getElementById('monitoring-status').textContent =
             `${mode} • Polling every ${stats.poll_interval}s • ${stats.total_codes} total codes`;
 
+        // Update cookie status
+        const healthResp = await fetch(`${API}/health`);
+        const health = await healthResp.json();
+        const cookieStatus = document.getElementById('cookie-status');
+        if (health.cookies_configured) {
+            cookieStatus.textContent = '✅ Cookies configured';
+            cookieStatus.className = 'text-xs text-green-400';
+        } else {
+            cookieStatus.textContent = '⚠️ No cookies — video downloads may fail';
+            cookieStatus.className = 'text-xs text-yellow-400';
+        }
+
         // Load recent codes for dashboard
         const codesResp = await fetch(`${API}/codes?limit=10`);
         const codes = await codesResp.json();
@@ -346,6 +358,28 @@ async function toggleRedeemed(id, redeemed) {
     } catch (err) {
         showToast('❌ Update failed', 'error');
     }
+}
+
+async function uploadCookies() {
+    const fileInput = document.getElementById('cookie-file');
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const resp = await fetch(`${API}/settings/cookies`, {
+            method: 'POST',
+            body: formData,
+        });
+        if (!resp.ok) throw new Error('Upload failed');
+        showToast('✅ Cookies uploaded successfully!', 'success');
+        loadDashboard();
+    } catch (err) {
+        showToast('❌ Cookie upload failed', 'error');
+    }
+    fileInput.value = '';
 }
 
 async function copyAllUnredeemed() {

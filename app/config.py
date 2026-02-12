@@ -39,6 +39,11 @@ class Settings:
     MAX_RETRIES: int = int(os.getenv("MAX_RETRIES", "3"))
     PROCESS_TIMEOUT: int = int(os.getenv("PROCESS_TIMEOUT", "1800"))  # 30 minutes
 
+    # yt-dlp cookies for YouTube authentication
+    # Can be a path to a Netscape cookies.txt file or a browser name (e.g., "chrome", "firefox")
+    YTDLP_COOKIES_FILE: str = os.getenv("YTDLP_COOKIES_FILE", "")
+    YTDLP_COOKIES_FROM_BROWSER: str = os.getenv("YTDLP_COOKIES_FROM_BROWSER", "")
+
     @property
     def use_youtube_api(self) -> bool:
         """Whether YouTube Data API is configured."""
@@ -54,6 +59,12 @@ class Settings:
         self.DATA_DIR.mkdir(parents=True, exist_ok=True)
         self.VIDEOS_DIR.mkdir(parents=True, exist_ok=True)
         self.FRAMES_DIR.mkdir(parents=True, exist_ok=True)
+
+        # Auto-detect cookies.txt in data directory
+        if not self.YTDLP_COOKIES_FILE:
+            cookies_path = self.DATA_DIR / "cookies.txt"
+            if cookies_path.exists():
+                self.YTDLP_COOKIES_FILE = str(cookies_path)
 
 
 settings = Settings()

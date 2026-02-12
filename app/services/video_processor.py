@@ -294,8 +294,15 @@ async def download_video(video_url: str, video_id: str) -> str:
         "--no-warnings",
         "--quiet",
         "--no-progress",
-        video_url,
     ]
+
+    # Add cookie authentication if configured
+    if settings.YTDLP_COOKIES_FILE:
+        cmd.extend(["--cookies", settings.YTDLP_COOKIES_FILE])
+    elif settings.YTDLP_COOKIES_FROM_BROWSER:
+        cmd.extend(["--cookies-from-browser", settings.YTDLP_COOKIES_FROM_BROWSER])
+
+    cmd.append(video_url)
 
     process = await asyncio.create_subprocess_exec(
         *cmd,
