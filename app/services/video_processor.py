@@ -3,8 +3,6 @@
 import asyncio
 import logging
 import os
-import subprocess
-import shutil
 from datetime import datetime
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
@@ -269,11 +267,14 @@ def _scan_single_frame(frame_path: str) -> list[dict]:
 
 
 def _get_frame_timestamp(filename: str) -> float:
-    """Extract approximate timestamp from frame filename (frame_NNNNNN.jpg)."""
+    """Extract approximate timestamp from frame filename (frame_NNNNNN.jpg).
+
+    ffmpeg numbering starts at 1, so frame_000001.jpg = 0.0s, frame_000002.jpg = 0.5s, etc.
+    """
     try:
         # Filename format: frame_000001.jpg
         num = int(filename.split("_")[1].split(".")[0])
-        return num * settings.FRAME_INTERVAL
+        return (num - 1) * settings.FRAME_INTERVAL
     except (IndexError, ValueError):
         return 0.0
 

@@ -184,8 +184,8 @@ function renderChannels(channels) {
                         class="btn-sm ${ch.is_active ? 'bg-green-700 hover:bg-green-800' : 'bg-gray-600 hover:bg-gray-700'}">
                     ${ch.is_active ? '✅ Active' : '⏸️ Paused'}
                 </button>
-                <button onclick="deleteChannel(${ch.id}, '${escapeHtml(ch.channel_name)}')"
-                        class="btn-sm bg-red-800 hover:bg-red-700" title="Delete">
+                <button onclick="deleteChannel(${ch.id})"
+                        class="btn-sm bg-red-800 hover:bg-red-700" title="Delete" data-name="${escapeHtml(ch.channel_name)}">
                     🗑️
                 </button>
             </div>
@@ -219,7 +219,10 @@ async function toggleChannel(id, active) {
     }
 }
 
-async function deleteChannel(id, name) {
+async function deleteChannel(id) {
+    // Get channel name from the button's data attribute
+    const btn = event.currentTarget;
+    const name = btn.dataset.name || `Channel #${id}`;
     if (!confirm(`Delete channel "${name}" and all its data?`)) return;
     try {
         await fetch(`${API}/channels/${id}`, { method: 'DELETE' });
@@ -265,7 +268,7 @@ function renderVideos(videos) {
                     ${escapeHtml(v.channel_name)} • ${timeAgo(v.discovered_at)}
                     ${v.frames_extracted ? '• ' + v.frames_extracted + ' frames' : ''}
                     ${v.code_count ? '• <span class="text-pokemon-yellow">' + v.code_count + ' codes</span>' : ''}
-                    ${v.error_message ? '• <span class="text-red-400">' + escapeHtml(v.error_message) + '</span>' : ''}
+                    ${v.error_message ? '• <span class="text-red-400" title="' + escapeHtml(v.error_message) + '">' + escapeHtml(v.error_message.substring(0, 80)) + (v.error_message.length > 80 ? '...' : '') + '</span>' : ''}
                 </div>
             </div>
             <div class="flex items-center gap-2 ml-3">

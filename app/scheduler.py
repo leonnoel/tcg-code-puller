@@ -92,16 +92,28 @@ async def cleanup_old_files():
                     logger.debug(f"Cleaned up video: {f.name}")
 
         # Clean old frames (only those not associated with codes)
+        # Frames are stored in FRAMES_DIR/<video_id>/frame_*.jpg
         if settings.FRAMES_DIR.exists():
             from app.database import get_db
             db = await get_db()
             cursor = await db.execute("SELECT DISTINCT frame_path FROM codes WHERE frame_path IS NOT NULL")
             keep_frames = {row[0] for row in await cursor.fetchall()}
 
-            for f in settings.FRAMES_DIR.iterdir():
-                if f.is_file() and str(f) not in keep_frames and f.stat().st_mtime < frame_cutoff:
-                    f.unlink()
-                    logger.debug(f"Cleaned up frame: {f.name}")
+            for video_dir in settings.FRAMES_DIR.iterdir():
+                if not video_dir.is_dir():
+                    continue
+                # Check if any file in the directory is old enough to clean
+                all_old = True
+                for f in video_dir.iterdir():
+                    if f.is_file():
+                        if str(f) in keep_frames or f.stat().st_mtime >= frame_cutoff:
+                            all_old = False
+                            break
+                # Only remove the whole directory if all frames are old and none are kept
+                if all_old and any(video_dir.iterdir()):
+                    import shutil
+                    shutil.rmtree(str(video_dir), ignore_errors=True)
+                    logger.debug(f"Cleaned up frame directory: {video_dir.name}")
 
     except Exception as e:
         logger.error(f"Error in cleanup_old_files: {e}")

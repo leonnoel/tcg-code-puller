@@ -49,6 +49,23 @@ async def list_codes(
     return [dict(row) for row in rows]
 
 
+# Static routes MUST be before parameterized routes
+@router.put("/bulk/redeem")
+async def bulk_mark_redeemed(code_ids: list[int]):
+    """Mark multiple codes as redeemed."""
+    db = await get_db()
+    now = datetime.utcnow().isoformat()
+
+    for cid in code_ids:
+        await db.execute(
+            "UPDATE codes SET is_redeemed = 1, redeemed_at = ? WHERE id = ?",
+            (now, cid),
+        )
+    await db.commit()
+
+    return {"status": "ok", "updated": len(code_ids)}
+
+
 @router.put("/{code_id}")
 async def update_code(code_id: int, update: CodeUpdate):
     """Update a code (e.g., mark as redeemed)."""
@@ -67,19 +84,3 @@ async def update_code(code_id: int, update: CodeUpdate):
         await db.commit()
 
     return {"status": "ok"}
-
-
-@router.put("/bulk/redeem")
-async def bulk_mark_redeemed(code_ids: list[int]):
-    """Mark multiple codes as redeemed."""
-    db = await get_db()
-    now = datetime.utcnow().isoformat()
-
-    for cid in code_ids:
-        await db.execute(
-            "UPDATE codes SET is_redeemed = 1, redeemed_at = ? WHERE id = ?",
-            (now, cid),
-        )
-    await db.commit()
-
-    return {"status": "ok", "updated": len(code_ids)}
