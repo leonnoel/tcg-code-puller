@@ -1,0 +1,104 @@
+/* Tab buttons */
+.tab-btn {
+    @apply px-4 py-2.5 text-sm font-medium text-gray-400 border-b-2 border-transparent
+           hover:text-gray-200 hover:border-gray-500 transition-all duration-200;
+}
+.tab-btn.active {
+    @apply text-pokemon-yellow border-pokemon-yellow;
+}
+
+/* Stat cards */
+.stat-card {
+    @apply bg-pokemon-card rounded-lg border border-gray-700 p-4 text-center;
+}
+.stat-value {
+    @apply text-3xl font-bold text-white;
+}
+.stat-label {
+    @apply text-sm text-gray-400 mt-1;
+}
+
+/* Buttons */
+.btn {
+    @apply px-4 py-2 rounded-lg font-medium text-white transition-colors duration-200 text-sm
+           disabled:opacity-50 disabled:cursor-not-allowed;
+}
+.btn-sm {
+    @apply px-3 py-1.5 rounded-lg font-medium text-white transition-colors duration-200 text-xs;
+}
+
+/* Code display */
+.code-text {
+    @apply font-mono text-lg tracking-wider text-pokemon-yellow bg-pokemon-darker px-3 py-1.5 rounded
+           border border-gray-600 select-all cursor-pointer hover:border-pokemon-yellow transition-colors;
+}
+
+/* Status badges */
+.badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+}
+.badge-pending { @apply bg-yellow-900 text-yellow-300; }
+.badge-downloading { @apply bg-blue-900 text-blue-300; }
+.badge-processing { @apply bg-purple-900 text-purple-300; }
+.badge-completed { @apply bg-green-900 text-green-300; }
+.badge-failed { @apply bg-red-900 text-red-300; }
+.badge-qr { @apply bg-cyan-900 text-cyan-300; }
+.badge-ocr { @apply bg-orange-900 text-orange-300; }
+
+/* Toast animations */
+.toast {
+    @apply bg-pokemon-card border border-gray-600 rounded-lg p-4 shadow-2xl max-w-sm
+           transform transition-all duration-300 ease-out;
+    animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-in 4.7s forwards;
+}
+.toast-code {
+    @apply border-pokemon-yellow;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+/* Activity feed items */
+.activity-item {
+    @apply flex items-start gap-3 py-2 text-sm;
+}
+.activity-icon {
+    @apply text-lg flex-shrink-0;
+}
+.activity-time {
+    @apply text-xs text-gray-500 flex-shrink-0;
+}
+
+/* Loading spinner */
+.spinner {
+    @apply w-5 h-5 border-2 border-gray-600 border-t-pokemon-yellow rounded-full;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Copy button feedback */
+.copied {
+    @apply bg-green-600 !important;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    @apply bg-pokemon-darker;
+}
+::-webkit-scrollbar-thumb {
+    @apply bg-gray-600 rounded;
+}
+::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-500;
+}

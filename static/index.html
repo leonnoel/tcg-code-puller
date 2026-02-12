@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokemon TCG Code Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        pokemon: {
+                            red: '#E3350D',
+                            blue: '#006DAA',
+                            yellow: '#FFCC00',
+                            dark: '#1a1a2e',
+                            darker: '#0f0f23',
+                            card: '#16213e',
+                            accent: '#e94560',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="bg-pokemon-darker text-gray-100 min-h-screen">
+    <!-- Header -->
+    <header class="bg-pokemon-dark border-b border-gray-700 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <span class="text-3xl">⚡</span>
+                <div>
+                    <h1 class="text-xl font-bold text-pokemon-yellow">Pokemon TCG Code Monitor</h1>
+                    <p class="text-xs text-gray-400" id="monitoring-status">Loading...</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span id="ws-status" class="inline-flex items-center gap-1.5 text-xs">
+                    <span class="w-2 h-2 rounded-full bg-red-500" id="ws-dot"></span>
+                    <span id="ws-label">Disconnected</span>
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Tabs -->
+    <nav class="bg-pokemon-dark border-b border-gray-700">
+        <div class="max-w-7xl mx-auto px-4 flex gap-1">
+            <button class="tab-btn active" data-tab="dashboard">📊 Dashboard</button>
+            <button class="tab-btn" data-tab="channels">📺 Channels</button>
+            <button class="tab-btn" data-tab="videos">🎬 Videos</button>
+            <button class="tab-btn" data-tab="codes">🎯 Codes</button>
+        </div>
+    </nav>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-20 right-4 z-50 flex flex-col gap-2"></div>
+
+    <!-- Tab Content -->
+    <main class="max-w-7xl mx-auto px-4 py-6">
+
+        <!-- Dashboard Tab -->
+        <div id="tab-dashboard" class="tab-content">
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-channels">0</div>
+                    <div class="stat-label">Active Channels</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-videos-today">0</div>
+                    <div class="stat-label">Videos Today</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value text-pokemon-yellow" id="stat-codes-today">0</div>
+                    <div class="stat-label">Codes Today</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value text-green-400" id="stat-unredeemed">0</div>
+                    <div class="stat-label">Unredeemed</div>
+                </div>
+            </div>
+
+            <!-- Recent Codes -->
+            <div class="bg-pokemon-card rounded-lg border border-gray-700 mb-6">
+                <div class="p-4 border-b border-gray-700 flex items-center justify-between">
+                    <h2 class="text-lg font-semibold">🎯 Latest Codes</h2>
+                    <button onclick="copyAllUnredeemed()" class="btn-sm bg-pokemon-accent hover:bg-red-600">
+                        Copy All Unredeemed
+                    </button>
+                </div>
+                <div id="recent-codes" class="p-4">
+                    <p class="text-gray-500 text-center py-8">No codes found yet. Add some channels to start monitoring!</p>
+                </div>
+            </div>
+
+            <!-- Activity Feed -->
+            <div class="bg-pokemon-card rounded-lg border border-gray-700">
+                <div class="p-4 border-b border-gray-700">
+                    <h2 class="text-lg font-semibold">📡 Live Activity</h2>
+                </div>
+                <div id="activity-feed" class="p-4 max-h-96 overflow-y-auto">
+                    <p class="text-gray-500 text-center py-4">Waiting for activity...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Channels Tab -->
+        <div id="tab-channels" class="tab-content hidden">
+            <!-- Add Channel Form -->
+            <div class="bg-pokemon-card rounded-lg border border-gray-700 p-4 mb-6">
+                <h2 class="text-lg font-semibold mb-3">Add YouTube Channel</h2>
+                <form id="add-channel-form" class="flex gap-3">
+                    <input type="text" id="channel-input" placeholder="Paste YouTube channel URL, handle (@name), or channel ID..."
+                           class="flex-1 bg-pokemon-darker border border-gray-600 rounded-lg px-4 py-2 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-pokemon-accent">
+                    <button type="submit" class="btn bg-pokemon-blue hover:bg-blue-700" id="add-channel-btn">
+                        Add Channel
+                    </button>
+                </form>
+            </div>
+
+            <!-- Channel List -->
+            <div class="bg-pokemon-card rounded-lg border border-gray-700">
+                <div class="p-4 border-b border-gray-700">
+                    <h2 class="text-lg font-semibold">Monitored Channels</h2>
+                </div>
+                <div id="channel-list" class="p-4">
+                    <p class="text-gray-500 text-center py-8">No channels yet. Add one above!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Videos Tab -->
+        <div id="tab-videos" class="tab-content hidden">
+            <div class="bg-pokemon-card rounded-lg border border-gray-700">
+                <div class="p-4 border-b border-gray-700 flex items-center justify-between">
+                    <h2 class="text-lg font-semibold">Processed Videos</h2>
+                    <select id="video-status-filter" class="bg-pokemon-darker border border-gray-600 rounded px-3 py-1 text-sm">
+                        <option value="">All Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="downloading">Downloading</option>
+                        <option value="processing">Processing</option>
+                        <option value="completed">Completed</option>
+                        <option value="failed">Failed</option>
+                    </select>
+                </div>
+                <div id="video-list" class="divide-y divide-gray-700">
+                    <p class="text-gray-500 text-center py-8">No videos yet.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Codes Tab -->
+        <div id="tab-codes" class="tab-content hidden">
+            <div class="bg-pokemon-card rounded-lg border border-gray-700">
+                <div class="p-4 border-b border-gray-700 flex items-center justify-between flex-wrap gap-3">
+                    <h2 class="text-lg font-semibold">Extracted Codes</h2>
+                    <div class="flex items-center gap-3">
+                        <select id="code-filter" class="bg-pokemon-darker border border-gray-600 rounded px-3 py-1 text-sm">
+                            <option value="">All Codes</option>
+                            <option value="unredeemed">Unredeemed</option>
+                            <option value="redeemed">Redeemed</option>
+                        </select>
+                        <button onclick="copyAllUnredeemed()" class="btn-sm bg-pokemon-accent hover:bg-red-600">
+                            Copy All Unredeemed
+                        </button>
+                    </div>
+                </div>
+                <div id="code-list" class="divide-y divide-gray-700">
+                    <p class="text-gray-500 text-center py-8">No codes found yet.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Audio for notifications -->
+    <audio id="notification-sound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRl9vT19teleGFtcGxlAAAA" type="audio/wav">
+    </audio>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
