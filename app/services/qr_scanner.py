@@ -1,7 +1,6 @@
 """QR code detection from video frames using pyzbar and OpenCV."""
 
 import logging
-from typing import Optional
 
 import cv2
 import numpy as np

@@ -14,7 +14,20 @@ Automatically monitors Pokémon pack-opening YouTubers for TCG redemption codes.
 
 ## Quick Start
 
-### Option A: Docker (recommended)
+### Option A: Docker Compose (recommended)
+
+```bash
+# Set your API key (optional but recommended for speed)
+export YOUTUBE_API_KEY="your-key-here"
+
+# Start the app
+docker compose up -d
+
+# View logs
+docker compose logs -f
+```
+
+### Option B: Docker
 
 ```bash
 docker build -t pokemon-tcg-monitor .
