@@ -50,6 +50,20 @@ async def list_videos(
     return [dict(row) for row in rows]
 
 
+# Static routes MUST be defined before parameterized routes
+@router.post("/bulk/skip")
+async def bulk_skip_videos(video_ids: list[int]):
+    """Skip multiple videos at once."""
+    db = await get_db()
+    for vid in video_ids:
+        await db.execute(
+            "UPDATE videos SET status = 'skipped' WHERE id = ? AND status = 'pending'",
+            (vid,),
+        )
+    await db.commit()
+    return {"status": "ok", "skipped": len(video_ids)}
+
+
 @router.post("/{video_id}/reprocess")
 async def reprocess_video(video_id: int):
     """Queue a video for reprocessing."""
@@ -87,19 +101,6 @@ async def skip_video(video_id: int):
     await db.commit()
 
     return {"status": "ok", "message": "Video skipped"}
-
-
-@router.post("/bulk/skip")
-async def bulk_skip_videos(video_ids: list[int]):
-    """Skip multiple videos at once."""
-    db = await get_db()
-    for vid in video_ids:
-        await db.execute(
-            "UPDATE videos SET status = 'skipped' WHERE id = ? AND status = 'pending'",
-            (vid,),
-        )
-    await db.commit()
-    return {"status": "ok", "skipped": len(video_ids)}
 
 
 @router.get("/{video_id}", response_model=VideoResponse)
