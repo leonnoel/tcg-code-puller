@@ -76,7 +76,6 @@ function initForms() {
             btn.textContent = 'Add Channel';
         }
     });
-}
 
     document.getElementById('add-video-form').addEventListener('submit', async (e) => {
         e.preventDefault();
