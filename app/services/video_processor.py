@@ -90,7 +90,9 @@ async def process_video(video: dict) -> None:
             "frame_count": frame_count,
         })
 
-        # Step 3: Scan frames
+        # Step 3: Scan frames — two-pass approach
+        # Pass 1: Fast QR scan on all frames
+        # Pass 2: OCR only on frames near QR hits (±5 frames) to reduce false positives
         scan_started = datetime.utcnow()
         qr_found = 0
         ocr_found = 0
@@ -99,72 +101,66 @@ async def process_video(video: dict) -> None:
         frame_files = sorted(frames_dir.glob("*.jpg"))
         total_frames = len(frame_files)
 
+        # ── Pass 1: QR scan (fast) ──
+        qr_hit_indices = set()
         for i, frame_path in enumerate(frame_files):
             try:
-                # Run scanning in thread pool to not block event loop
                 codes_from_frame = await asyncio.get_event_loop().run_in_executor(
-                    _executor, _scan_single_frame, str(frame_path)
+                    _executor, _scan_frame_qr_only, str(frame_path)
                 )
+                for code_info in codes_from_frame:
+                    qr_hit_indices.add(i)
+                    code_normalized = code_info["code"]
+                    if code_normalized not in unique_codes:
+                        unique_codes.add(code_normalized)
+                        qr_found += 1
+                        frame_timestamp = _get_frame_timestamp(frame_path.name)
+                        await _store_and_broadcast_code(
+                            db, video_id, video, code_info, frame_timestamp, str(frame_path), broadcast
+                        )
+            except Exception as e:
+                logger.warning(f"QR scan error {frame_path.name}: {e}")
 
+            if (i + 1) % 200 == 0:
+                logger.info(f"QR pass: {i+1}/{total_frames} frames, {qr_found} QR codes found")
+
+        logger.info(f"QR pass complete: {qr_found} codes from {total_frames} frames")
+
+        # ── Pass 2: OCR scan (slower, targeted) ──
+        # Only scan frames near where QR codes were found (±10 frames)
+        # This avoids OCR false positives from random text in non-card frames
+        if qr_hit_indices:
+            ocr_indices = set()
+            for idx in qr_hit_indices:
+                for offset in range(-10, 11):
+                    target = idx + offset
+                    if 0 <= target < total_frames:
+                        ocr_indices.add(target)
+            ocr_frames = sorted(ocr_indices)
+        else:
+            # No QR found — run OCR on a sample of frames (every 5th frame)
+            # to avoid massive false positives on non-pack-opening videos
+            ocr_frames = list(range(0, total_frames, 5))
+
+        for i in ocr_frames:
+            frame_path = frame_files[i]
+            try:
+                codes_from_frame = await asyncio.get_event_loop().run_in_executor(
+                    _executor, _scan_frame_ocr_only, str(frame_path)
+                )
                 for code_info in codes_from_frame:
                     code_normalized = code_info["code"]
-                    if code_normalized in unique_codes:
-                        continue
-
-                    unique_codes.add(code_normalized)
-
-                    if code_info["source"] == "qr":
-                        qr_found += 1
-                    else:
+                    if code_normalized not in unique_codes:
+                        unique_codes.add(code_normalized)
                         ocr_found += 1
-
-                    # Calculate approximate timestamp from frame filename
-                    frame_timestamp = _get_frame_timestamp(frame_path.name)
-
-                    # Store the code
-                    try:
-                        await db.execute(
-                            """INSERT OR IGNORE INTO codes
-                               (video_id, code, code_normalized, source_type, frame_timestamp, frame_path, confidence)
-                               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                            (
-                                video_id,
-                                code_info.get("raw", code_normalized),
-                                code_normalized,
-                                code_info["source"],
-                                frame_timestamp,
-                                str(frame_path),
-                                code_info.get("confidence", 1.0),
-                            ),
+                        frame_timestamp = _get_frame_timestamp(frame_path.name)
+                        await _store_and_broadcast_code(
+                            db, video_id, video, code_info, frame_timestamp, str(frame_path), broadcast
                         )
-                        await db.commit()
-
-                        logger.info(
-                            f"CODE FOUND [{code_info['source'].upper()}]: {code_normalized} "
-                            f"in {video['title']} at ~{frame_timestamp:.1f}s"
-                        )
-
-                        # Broadcast immediately!
-                        await broadcast("code_found", {
-                            "code": code_normalized,
-                            "source": code_info["source"],
-                            "video_title": video["title"],
-                            "video_id": video["youtube_video_id"],
-                            "frame_timestamp": frame_timestamp,
-                        })
-
-                    except Exception as e:
-                        logger.debug(f"Duplicate or insert error: {e}")
-
-                # Log progress periodically
-                if (i + 1) % 100 == 0:
-                    logger.info(
-                        f"Scanned {i+1}/{total_frames} frames, "
-                        f"found {len(unique_codes)} unique codes so far"
-                    )
-
             except Exception as e:
-                logger.warning(f"Error scanning frame {frame_path.name}: {e}")
+                logger.warning(f"OCR scan error {frame_path.name}: {e}")
+
+        logger.info(f"OCR pass complete: {ocr_found} additional codes from {len(ocr_frames)} frames")
 
         # Step 4: Record scan log
         scan_completed = datetime.utcnow()
@@ -227,16 +223,13 @@ async def process_video(video: dict) -> None:
                 pass
 
 
-def _scan_single_frame(frame_path: str) -> list[dict]:
-    """Scan a single frame for codes (QR + OCR). Runs in thread pool."""
+def _scan_frame_qr_only(frame_path: str) -> list[dict]:
+    """Scan a single frame for QR codes only (fast). Runs in thread pool."""
     codes = []
-
     try:
         frame = cv2.imread(frame_path)
         if frame is None:
             return codes
-
-        # First: fast QR detection
         qr_results = scan_frame_for_qr(frame)
         for qr_data in qr_results:
             validated = validate_code(qr_data)
@@ -247,23 +240,78 @@ def _scan_single_frame(frame_path: str) -> list[dict]:
                     "source": "qr",
                     "confidence": 1.0,
                 })
+    except Exception as e:
+        logger.debug(f"QR scan error {frame_path}: {e}")
+    return codes
 
-        # Second: OCR (slower — only if QR didn't find anything, or always for thoroughness)
+
+def _scan_frame_ocr_only(frame_path: str) -> list[dict]:
+    """Scan a single frame for text codes via OCR (slower). Runs in thread pool."""
+    codes = []
+    try:
+        frame = cv2.imread(frame_path)
+        if frame is None:
+            return codes
         ocr_results = scan_frame_for_text_codes(frame)
         for ocr_code in ocr_results:
             validated = validate_code(ocr_code)
-            if validated and validated not in {c["code"] for c in codes}:
+            if validated:
                 codes.append({
                     "code": validated,
                     "raw": ocr_code,
                     "source": "ocr",
                     "confidence": 0.7,
                 })
-
     except Exception as e:
-        logger.debug(f"Error scanning {frame_path}: {e}")
-
+        logger.debug(f"OCR scan error {frame_path}: {e}")
     return codes
+
+
+def _scan_single_frame(frame_path: str) -> list[dict]:
+    """Scan a single frame for codes (QR + OCR). Used for testing."""
+    codes = _scan_frame_qr_only(frame_path)
+    found_qr_codes = {c["code"] for c in codes}
+    ocr_codes = _scan_frame_ocr_only(frame_path)
+    for c in ocr_codes:
+        if c["code"] not in found_qr_codes:
+            codes.append(c)
+    return codes
+
+
+async def _store_and_broadcast_code(db, video_id, video, code_info, frame_timestamp, frame_path, broadcast):
+    """Store a found code in the DB and broadcast via WebSocket."""
+    code_normalized = code_info["code"]
+    try:
+        await db.execute(
+            """INSERT OR IGNORE INTO codes
+               (video_id, code, code_normalized, source_type, frame_timestamp, frame_path, confidence)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (
+                video_id,
+                code_info.get("raw", code_normalized),
+                code_normalized,
+                code_info["source"],
+                frame_timestamp,
+                frame_path,
+                code_info.get("confidence", 1.0),
+            ),
+        )
+        await db.commit()
+
+        logger.info(
+            f"CODE FOUND [{code_info['source'].upper()}]: {code_normalized} "
+            f"in {video['title']} at ~{frame_timestamp:.1f}s"
+        )
+
+        await broadcast("code_found", {
+            "code": code_normalized,
+            "source": code_info["source"],
+            "video_title": video["title"],
+            "video_id": video["youtube_video_id"],
+            "frame_timestamp": frame_timestamp,
+        })
+    except Exception as e:
+        logger.debug(f"Duplicate or insert error: {e}")
 
 
 def _get_frame_timestamp(filename: str) -> float:

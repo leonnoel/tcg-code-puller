@@ -55,14 +55,13 @@ async def add_video_manually(req: ManualVideoRequest):
         await db.commit()
         return {"status": "ok", "message": "Video re-queued for processing", "video_id": existing["id"]}
 
-    # Get or create a placeholder channel
-    cursor = await db.execute("SELECT id FROM channels LIMIT 1")
+    # Get or create a placeholder channel for manual videos
+    cursor = await db.execute("SELECT id FROM channels WHERE channel_id = 'manual'")
     channel_row = await cursor.fetchone()
     if not channel_row:
-        # Create a placeholder channel for manual videos
         await db.execute(
-            """INSERT INTO channels (channel_id, channel_name, channel_url)
-               VALUES ('manual', 'Manual Additions', 'https://youtube.com')"""
+            """INSERT INTO channels (channel_id, channel_name, channel_url, is_active)
+               VALUES ('manual', 'Manual Additions', 'https://youtube.com', 0)"""
         )
         await db.commit()
         cursor = await db.execute("SELECT id FROM channels WHERE channel_id = 'manual'")
