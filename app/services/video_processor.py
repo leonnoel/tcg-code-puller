@@ -351,6 +351,11 @@ async def download_video(video_url: str, video_id: str) -> str:
     elif settings.YTDLP_COOKIES_FROM_BROWSER:
         cmd.extend(["--cookies-from-browser", settings.YTDLP_COOKIES_FROM_BROWSER])
 
+    # Optionally download only the first N minutes for faster scanning
+    if settings.SCAN_FIRST_MINUTES > 0:
+        seconds = settings.SCAN_FIRST_MINUTES * 60
+        cmd.extend(["--download-sections", f"*0-{seconds}"])
+
     cmd.append(video_url)
 
     process = await asyncio.create_subprocess_exec(

@@ -55,6 +55,7 @@ All settings via environment variables:
 | `RSS_POLL_INTERVAL` | `120` | Seconds between RSS polls |
 | `VIDEO_MAX_RESOLUTION` | `720` | Max video download resolution |
 | `FRAME_INTERVAL` | `0.5` | Seconds between frame extractions |
+| `SCAN_FIRST_MINUTES` | `0` | Only scan first N minutes of video (0 = full) |
 | `PORT` | `8000` | Server port |
 | `YTDLP_COOKIES_FILE` | (none) | Path to Netscape cookies.txt for YouTube auth |
 | `YTDLP_COOKIES_FROM_BROWSER` | (none) | Browser to extract cookies from (e.g., `chrome`) |
@@ -67,6 +68,14 @@ All settings via environment variables:
 4. **Scan** — Runs QR detection (pyzbar) then OCR (tesseract) on each frame
 5. **Validate** — Matches against Pokémon TCG code format (13 alphanumeric chars)
 6. **Notify** — Pushes codes to your browser via WebSocket in real-time
+
+## ⚡ Speed Tips (Be First to Redeem)
+
+1. **Use YouTube API key** — Detects new uploads in ~30 seconds vs ~2-15 minutes with RSS
+2. **Set `SCAN_FIRST_MINUTES=5`** — Most pack openers show code cards in the first few minutes; scanning only the start is much faster
+3. **Keep the dashboard open** — WebSocket pushes codes to your browser the instant they're found
+4. **Enable desktop notifications** — Click the 🔔 bell so you get alerted even if the tab is in the background
+5. **Use the "Process Video by URL" feature** — If you spot a pack opening video before the poller does, paste the URL directly
 
 ## YouTube Cookie Authentication
 

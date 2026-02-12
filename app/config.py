@@ -30,6 +30,9 @@ class Settings:
     FRAME_INTERVAL: float = float(os.getenv("FRAME_INTERVAL", "0.5"))
     MAX_CONCURRENT_DOWNLOADS: int = int(os.getenv("MAX_CONCURRENT_DOWNLOADS", "2"))
     MAX_VIDEO_DURATION: int = int(os.getenv("MAX_VIDEO_DURATION", "7200"))  # 2 hours
+    # Scan only the first N minutes of video (0 = scan entire video)
+    # Most pack openers show code cards early — scanning just the first few minutes is much faster
+    SCAN_FIRST_MINUTES: int = int(os.getenv("SCAN_FIRST_MINUTES", "0"))
 
     # Cleanup
     VIDEO_RETENTION_HOURS: int = int(os.getenv("VIDEO_RETENTION_HOURS", "1"))

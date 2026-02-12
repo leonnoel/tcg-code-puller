@@ -62,7 +62,7 @@ async def process_pending_videos():
         try:
             db = await get_db()
             cursor = await db.execute(
-                "SELECT * FROM videos WHERE status = 'pending' ORDER BY discovered_at ASC LIMIT 1"
+                "SELECT * FROM videos WHERE status = 'pending' ORDER BY discovered_at DESC LIMIT 1"
             )
             video = await cursor.fetchone()
 
