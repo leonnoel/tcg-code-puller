@@ -172,6 +172,8 @@ function renderRecentCodes(codes) {
                 </span>
                 <span class="badge badge-${code.source_type}">${code.source_type.toUpperCase()}</span>
                 ${code.is_redeemed ? '<span class="badge bg-gray-700 text-gray-400">Redeemed</span>' : ''}
+                <a href="https://redeem.tcg.pokemon.com/en-us/" target="_blank"
+                   class="btn-sm bg-pokemon-red hover:bg-red-700 no-underline" title="Redeem">🎮</a>
             </div>
             <div class="text-xs text-gray-500">
                 ${code.channel_name} • ${timeAgo(code.discovered_at)}
@@ -371,6 +373,10 @@ function renderCodes(codes) {
                 <button onclick="copyCode('${code.code_normalized}', this)" class="btn-sm bg-gray-700 hover:bg-gray-600">
                     📋 Copy
                 </button>
+                <a href="https://redeem.tcg.pokemon.com/en-us/" target="_blank"
+                   class="btn-sm bg-pokemon-red hover:bg-red-700 no-underline" title="Open Pokemon TCG redeem page">
+                    🎮 Redeem
+                </a>
             </div>
             <div class="flex items-center gap-3 ml-3">
                 <div class="text-right text-xs text-gray-500">
@@ -603,14 +609,23 @@ function showToast(message, type = 'info') {
 }
 
 function playNotificationSound() {
-    // Browser notification
+    // Browser desktop notification
     if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('🎯 Pokemon TCG Code Found!', {
-            body: 'A new redemption code was detected!',
-            icon: '⚡',
+            body: 'A new redemption code was detected! Click to view.',
+            tag: 'pokemon-code-found',
+            requireInteraction: true,
         });
-    } else if ('Notification' in window && Notification.permission !== 'denied') {
-        Notification.requestPermission();
+    }
+}
+
+function requestNotificationPermission() {
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().then(perm => {
+            if (perm === 'granted') {
+                showToast('🔔 Desktop notifications enabled!', 'success');
+            }
+        });
     }
 }
 

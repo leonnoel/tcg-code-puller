@@ -154,6 +154,14 @@
     to { transform: rotate(360deg); }
 }
 
+/* Redeem button */
+.bg-pokemon-red {
+    background-color: #E3350D;
+}
+.no-underline {
+    text-decoration: none;
+}
+
 /* Copy button feedback */
 .copied {
     background-color: #16a34a !important;
