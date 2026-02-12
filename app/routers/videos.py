@@ -76,11 +76,14 @@ async def add_video_manually(req: ManualVideoRequest):
         import httpx
         async with httpx.AsyncClient(follow_redirects=True) as client:
             resp = await client.get(video_url, headers={
-                "User-Agent": "Mozilla/5.0",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Accept-Language": "en-US,en;q=0.9",
             }, timeout=10)
             title_match = re.search(r'<title>([^<]+?)(?:\s*-\s*YouTube)?</title>', resp.text)
             if title_match:
-                title = title_match.group(1).strip()
+                fetched = title_match.group(1).strip()
+                if fetched and fetched.lower() != "youtube":
+                    title = fetched
     except Exception:
         pass
 
