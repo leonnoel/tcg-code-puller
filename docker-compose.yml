@@ -1,0 +1,21 @@
+version: "3.8"
+
+services:
+  monitor:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      # YouTube Data API key (optional, enables 30s polling)
+      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY:-}
+      # Scan only first N minutes of videos (0 = full video)
+      - SCAN_FIRST_MINUTES=${SCAN_FIRST_MINUTES:-0}
+      # Polling intervals
+      - API_POLL_INTERVAL=${API_POLL_INTERVAL:-30}
+      - RSS_POLL_INTERVAL=${RSS_POLL_INTERVAL:-120}
+      # Video settings
+      - VIDEO_MAX_RESOLUTION=${VIDEO_MAX_RESOLUTION:-720}
+      - FRAME_INTERVAL=${FRAME_INTERVAL:-0.5}
+    restart: unless-stopped
