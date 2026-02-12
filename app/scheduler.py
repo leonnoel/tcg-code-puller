@@ -61,6 +61,15 @@ async def process_pending_videos():
 
         try:
             db = await get_db()
+
+            # Recover stale videos stuck in downloading/processing (e.g. from a crash)
+            await db.execute(
+                """UPDATE videos SET status = 'pending', error_message = 'Recovered from stale state'
+                   WHERE status IN ('downloading', 'processing')
+                   AND processing_started_at < datetime('now', '-30 minutes')"""
+            )
+            await db.commit()
+
             cursor = await db.execute(
                 "SELECT * FROM videos WHERE status = 'pending' ORDER BY discovered_at DESC LIMIT 1"
             )
