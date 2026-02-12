@@ -3,6 +3,7 @@
 const API = '/api';
 let ws = null;
 let wsReconnectTimer = null;
+let wsKeepaliveTimer = null;
 const activityLog = [];
 
 // ─── Initialization ──────────────────────────────────────────────────────────
@@ -73,6 +74,42 @@ function initForms() {
         } finally {
             btn.disabled = false;
             btn.textContent = 'Add Channel';
+        }
+    });
+}
+
+    document.getElementById('add-video-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const input = document.getElementById('video-url-input');
+        const btn = document.getElementById('add-video-btn');
+        const url = input.value.trim();
+        if (!url) return;
+
+        btn.disabled = true;
+        btn.textContent = 'Adding...';
+
+        try {
+            const resp = await fetch(`${API}/videos/add`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url }),
+            });
+
+            if (!resp.ok) {
+                const err = await resp.json();
+                throw new Error(err.detail || 'Failed to add video');
+            }
+
+            const result = await resp.json();
+            input.value = '';
+            showToast(`✅ ${result.message}`, 'success');
+            loadVideos();
+            loadDashboard();
+        } catch (err) {
+            showToast(`❌ ${err.message}`, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '🎯 Process';
         }
     });
 }
@@ -439,8 +476,9 @@ function connectWebSocket() {
             ws.close();
         };
 
-        // Keepalive ping every 30 seconds
-        setInterval(() => {
+        // Keepalive ping every 30 seconds (clear any previous timer first)
+        if (wsKeepaliveTimer) clearInterval(wsKeepaliveTimer);
+        wsKeepaliveTimer = setInterval(() => {
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send('ping');
             }
@@ -578,10 +616,16 @@ function playNotificationSound() {
 
 function timeAgo(dateStr) {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
+    // Server stores UTC timestamps — append Z if no timezone indicator present
+    let normalized = dateStr;
+    if (!normalized.endsWith('Z') && !normalized.includes('+') && !normalized.match(/\d{2}:\d{2}$/)) {
+        normalized += 'Z';
+    }
+    const date = new Date(normalized);
     const now = new Date();
     const seconds = Math.floor((now - date) / 1000);
 
+    if (isNaN(seconds) || seconds < 0) return '';
     if (seconds < 60) return 'just now';
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
     if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;

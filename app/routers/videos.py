@@ -1,6 +1,9 @@
 """Video management API endpoints."""
 
+import re
 import logging
+from pydantic import BaseModel
+
 from fastapi import APIRouter, HTTPException, Query
 
 from app.database import get_db
@@ -8,6 +11,91 @@ from app.models import VideoResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+class ManualVideoRequest(BaseModel):
+    url: str
+
+
+@router.post("/add")
+async def add_video_manually(req: ManualVideoRequest):
+    """Add a video by URL for processing (even if not from a monitored channel).
+
+    Useful for quickly processing a specific video you found.
+    """
+    url = req.url.strip()
+
+    # Extract YouTube video ID from URL
+    match = re.search(r'(?:v=|youtu\.be/|shorts/)([\w-]{11})', url)
+    if not match:
+        raise HTTPException(status_code=400, detail="Invalid YouTube video URL")
+
+    video_id = match.group(1)
+    video_url = f"https://www.youtube.com/watch?v={video_id}"
+
+    db = await get_db()
+
+    # Check if already exists
+    cursor = await db.execute(
+        "SELECT id, status FROM videos WHERE youtube_video_id = ?", (video_id,)
+    )
+    existing = await cursor.fetchone()
+    if existing:
+        existing = dict(existing)
+        if existing["status"] in ("completed", "processing", "downloading"):
+            raise HTTPException(
+                status_code=409,
+                detail=f"Video already exists (status: {existing['status']})"
+            )
+        # Reset to pending if failed/skipped
+        await db.execute(
+            "UPDATE videos SET status = 'pending', error_message = NULL WHERE id = ?",
+            (existing["id"],),
+        )
+        await db.commit()
+        return {"status": "ok", "message": "Video re-queued for processing", "video_id": existing["id"]}
+
+    # Get or create a placeholder channel
+    cursor = await db.execute("SELECT id FROM channels LIMIT 1")
+    channel_row = await cursor.fetchone()
+    if not channel_row:
+        # Create a placeholder channel for manual videos
+        await db.execute(
+            """INSERT INTO channels (channel_id, channel_name, channel_url)
+               VALUES ('manual', 'Manual Additions', 'https://youtube.com')"""
+        )
+        await db.commit()
+        cursor = await db.execute("SELECT id FROM channels WHERE channel_id = 'manual'")
+        channel_row = await cursor.fetchone()
+
+    channel_db_id = channel_row[0]
+
+    # Try to get video title
+    title = f"Manual: {video_id}"
+    try:
+        import httpx
+        async with httpx.AsyncClient(follow_redirects=True) as client:
+            resp = await client.get(video_url, headers={
+                "User-Agent": "Mozilla/5.0",
+            }, timeout=10)
+            title_match = re.search(r'<title>([^<]+?)(?:\s*-\s*YouTube)?</title>', resp.text)
+            if title_match:
+                title = title_match.group(1).strip()
+    except Exception:
+        pass
+
+    await db.execute(
+        """INSERT INTO videos (channel_id, youtube_video_id, title, video_url)
+           VALUES (?, ?, ?, ?)""",
+        (channel_db_id, video_id, title, video_url),
+    )
+    await db.commit()
+
+    cursor = await db.execute("SELECT id FROM videos WHERE youtube_video_id = ?", (video_id,))
+    new_row = await cursor.fetchone()
+
+    logger.info(f"Manual video added: {title} ({video_id})")
+    return {"status": "ok", "message": f"Video '{title}' queued for processing", "video_id": new_row[0]}
 
 
 @router.get("", response_model=list[VideoResponse])
