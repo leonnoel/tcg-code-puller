@@ -222,7 +222,7 @@ function renderChannels(channels) {
                         class="btn-sm ${ch.is_active ? 'bg-green-700 hover:bg-green-800' : 'bg-gray-600 hover:bg-gray-700'}">
                     ${ch.is_active ? '✅ Active' : '⏸️ Paused'}
                 </button>
-                <button onclick="deleteChannel(${ch.id})"
+                <button onclick="deleteChannel(event, ${ch.id})"
                         class="btn-sm bg-red-800 hover:bg-red-700" title="Delete" data-name="${escapeHtml(ch.channel_name)}">
                     🗑️
                 </button>
@@ -257,9 +257,9 @@ async function toggleChannel(id, active) {
     }
 }
 
-async function deleteChannel(id) {
+async function deleteChannel(e, id) {
     // Get channel name from the button's data attribute
-    const btn = event.currentTarget;
+    const btn = e.currentTarget;
     const name = btn.dataset.name || `Channel #${id}`;
     if (!confirm(`Delete channel "${name}" and all its data?`)) return;
     try {
